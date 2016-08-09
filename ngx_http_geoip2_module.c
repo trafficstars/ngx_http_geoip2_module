@@ -161,15 +161,18 @@ ngx_http_geoip2_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
             }
         }
 
-        // Trim tail
-        for (i = val.len-1; i > 0 && !isdigit(val.data[i]); i--) {
-            val.len--;
-        }
-
         // Trim special simbols on the tail
         ip_tail = ngx_strstr(val.data, "%");
         if (NULL != ip_tail) {
-            val.len = (size_t)(ip_tail - (char *) val.data);
+            size_t n_len = (size_t)(ip_tail - (char *) val.data);
+            if (n_len < val.len) {
+                val.len = n_len;
+            }
+        }
+
+        // Trim tail
+        for (i = val.len-1; i > 0 && !isdigit(val.data[i]); i--) {
+            val.len--;
         }
 
         if (ngx_parse_addr(r->pool, &addr, val.data, val.len) != NGX_OK) {
