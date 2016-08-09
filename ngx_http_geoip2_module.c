@@ -9,6 +9,8 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#include <ctype.h>
+
 #include <maxminddb.h>
 
 
@@ -131,6 +133,8 @@ ngx_http_geoip2_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ngx_array_t             *xfwd;
     u_char                  *p;
     ngx_str_t               val;
+    size_t                  i;
+    char                    *ip_tail;
 
 #if (NGX_HAVE_INET6)
     uint8_t address[16], *addressp = address;
@@ -142,6 +146,31 @@ ngx_http_geoip2_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
          if (ngx_http_complex_value(r, &geoip2->source, &val) != NGX_OK) {
              goto not_found;
          }
+
+        ip_tail = ngx_strstr(val.data, ",");
+        if (NULL != ip_tail) {
+            val.len = (size_t)(ip_tail - (char *) val.data);
+        }
+
+        // Trim head
+        for (i = 0; i < val.len && !isdigit(*val.data); i++) {
+            if (val.data[i] == '%') {
+                i += 2; val.data += 3; val.len -= 3;
+            } else {
+                val.data++; val.len--;
+            }
+        }
+
+        // Trim tail
+        for (i = val.len-1; i > 0 && !isdigit(val.data[i]); i--) {
+            val.len--;
+        }
+
+        // Trim special simbols on the tail
+        ip_tail = ngx_strstr(val.data, "%");
+        if (NULL != ip_tail) {
+            val.len = (size_t)(ip_tail - (char *) val.data);
+        }
 
         if (ngx_parse_addr(r->pool, &addr, val.data, val.len) != NGX_OK) {
             goto not_found;
