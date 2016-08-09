@@ -149,7 +149,10 @@ ngx_http_geoip2_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
         ip_tail = ngx_strstr(val.data, ",");
         if (NULL != ip_tail && ip_tail != (char *) val.data) {
-            val.len = (size_t)(ip_tail - (char *) val.data);
+            size_t n_len = (size_t)(ip_tail - (char *) val.data);
+            if (n_len < val.len && n_len > 6) {
+                val.len = n_len;
+            }
         }
 
         // Trim head
